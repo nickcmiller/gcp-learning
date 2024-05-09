@@ -16,8 +16,5 @@ COPY app.py .
 # Make port 8080 available to the world outside this container
 EXPOSE 8080
 
-# Define environment variable
-PORT 8080
-
 # Define the command to run the Flask application
 CMD ["python", "app.py"]
