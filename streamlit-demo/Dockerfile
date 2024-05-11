@@ -12,4 +12,4 @@ EXPOSE $PORT
 
 HEALTHCHECK CMD curl --fail http://localhost:$PORT/_stcore/health
 
-ENTRYPOINT ["streamlit", "run", "streamlit_app.py", "--server.port=$PORT", "--server.address=0.0.0.0"]
+ENTRYPOINT streamlit run streamlit_app.py --server.port=$PORT --server.address=0.0.0.0
