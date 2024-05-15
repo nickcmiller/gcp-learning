@@ -1,7 +1,10 @@
 import os
-import openai
+from openai import OpenAI
 import streamlit as st
 import json
+
+# Initialize OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Function to initialize chat history
 def initialize_chat_history():
@@ -11,8 +14,7 @@ def initialize_chat_history():
 # Function to get AI response
 def get_ai_response(messages):
     try:
-        openai.api_key = os.getenv("OPENAI_API_KEY")
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=messages
         )
