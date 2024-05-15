@@ -4,7 +4,7 @@ import streamlit as st
 import json
 
 ##################
-# HELPER FUNCTIONS 
+# GROQ CLIENT SETUP
 ##################
 
 # Initialize Groq client
@@ -21,6 +21,10 @@ def get_groq_response(messages):
     except Exception as e:
         st.error(f"An error occurred: {e}")
         return None
+
+##################
+# HELPER FUNCTIONS 
+##################
 
 # Function to initialize chat history
 def initialize_chat_history():
