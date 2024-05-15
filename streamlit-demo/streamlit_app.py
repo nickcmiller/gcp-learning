@@ -3,6 +3,10 @@ from groq import Groq
 import streamlit as st
 import json
 
+##################
+# HELPER FUNCTIONS 
+##################
+
 # Initialize Groq client
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
@@ -28,9 +32,26 @@ def update_chat_history(user_message, ai_message):
     st.session_state.chat_history.append({"role": "user", "content": user_message})
     st.session_state.chat_history.append({"role": "assistant", "content": ai_message})
 
+# Function to send message upon button click or Enter key press
+def send_message():
+    if st.session_state.input:
+        ai_message = get_groq_response(st.session_state.chat_history + [{"role": "user", "content": st.session_state.input}])
+        if ai_message:
+            update_chat_history(st.session_state.input, ai_message)
+            clear_input()
+
+# Function to clear the input field after sending a message
+def clear_input():
+    st.session_state["input"] = ""
+
+######################### 
+# STREAMLIT APP FUNCTIONS
+#########################
+
 # Initialize chat history
 initialize_chat_history()
 
+# Set the title of the app
 st.title("Groq Chat App")
 
 # Display chat history in the correct order (from oldest to newest)
@@ -42,22 +63,18 @@ for message in st.session_state.chat_history:
         st.markdown(f"<div style='background-color: #f0f0f0; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: left;'>AI: {message['content']}</div>", unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
-def clear_input():
-    st.session_state["input"] = ""
-
-def send_message():
-    if st.session_state.input:
-        ai_message = get_groq_response(st.session_state.chat_history + [{"role": "user", "content": st.session_state.input}])
-        if ai_message:
-            update_chat_history(st.session_state.input, ai_message)
-            clear_input()  # Clear the input field
-
+# Input field for user messages
 input_message = st.text_input("Type your message:", key="input", on_change=send_message)
 
+# Send button to trigger sending the message
 st.button("Send", on_click=send_message, key="send_button")
 
-# Convert chat history to JSON
+# Convert chat history to JSON for data export
 chat_history_json = json.dumps(st.session_state.chat_history)
+
+####################
+# CSS AND JAVASCRIPT
+####################
 
 # Enhanced CSS for better styling
 st.markdown("""
@@ -74,14 +91,13 @@ st.markdown("""
         border-color: blue !important;  /* Ensure border color is blue when focused */
         box-shadow: none !important;  /* Remove any box shadow which might be causing the red outline */
     }
-    /* Override validation styles */
-    .stTextInput div div input:invalid {
+    .stTextInput div div input:invalid, .stTextInput div div input:valid {
         border: 2px solid blue !important;
         box-shadow: none !important;
+        outline: none !important;
     }
-    .stTextInput div div input:valid {
-        border: 2px solid blue !important;
-        box-shadow: none !important;
+    .stTextInput .st-c1, .stTextInput .st-c0, .stTextInput .st-bz, .stTextInput .st-by {
+        border-color: blue !important;
     }
     .stButton button {
         background-color: #ff6f61 !important;
