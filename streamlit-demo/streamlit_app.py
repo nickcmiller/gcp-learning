@@ -34,15 +34,17 @@ initialize_chat_history()
 st.title("Simple Chat App")
 
 # Display chat history in the correct order (from oldest to newest)
+st.markdown("<div style='max-height: 400px; overflow-y: auto; padding: 10px;'>", unsafe_allow_html=True)
 for message in st.session_state.chat_history:
     if message['role'] == 'user':
-        st.write(f"You: {message['content']}")
+        st.markdown(f"<div style='background-color: #e1f5fe; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: right;'>You: {message['content']}</div>", unsafe_allow_html=True)
     elif message['role'] == 'assistant':
-        st.write(f"AI: {message['content']}")
+        st.markdown(f"<div style='background-color: #fff3e0; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: left;'>AI: {message['content']}</div>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
-input_message = st.text_input("Type your message:")
+input_message = st.text_input("Type your message:", key="input")
 
-if st.button("Send"):
+if st.button("Send", key="send"):
     if input_message:
         ai_message = get_ai_response(st.session_state.chat_history + [{"role": "user", "content": input_message}])
         if ai_message:
@@ -53,3 +55,40 @@ if st.button("Send"):
 
 # Convert chat history to JSON
 chat_history_json = json.dumps(st.session_state.chat_history)
+
+# CSS for better styling
+st.markdown("""
+    <style>
+    .stTextInput>div>div>input {
+        padding: 10px;
+        border: 2px solid #ccc;
+        border-radius: 5px;
+        outline-color: blue;  /* Change outline color to blue */
+    }
+    .stTextInput>div>div>input:focus {
+        outline: 2px solid blue;  /* Change outline color to blue when focused */
+    }
+    .stButton>button {
+        background-color: #ff6f61;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    .stButton>button:hover {
+        background-color: #ff3b2f;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# JavaScript to trigger the send button on CMD + Enter
+st.markdown("""
+    <script>
+    document.addEventListener("keydown", function(event) {
+        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+            document.querySelector('button[title="send"]').click();
+        }
+    });
+    </script>
+""", unsafe_allow_html=True)
