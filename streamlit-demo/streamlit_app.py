@@ -4,9 +4,7 @@ import streamlit as st
 import json
 
 # Initialize Groq client
-client = Groq(
-    api_key=os.environ.get("GROQ_API_KEY"),
-)
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # Function to get response from LLama3 via Groq
 def get_groq_response(messages):
@@ -44,17 +42,17 @@ for message in st.session_state.chat_history:
         st.markdown(f"<div style='background-color: #f0f0f0; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: left;'>AI: {message['content']}</div>", unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
-input_message = st.text_input("Type your message:", key="input")
+def clear_input():
+    st.session_state["input"] = ""
 
 def send_message():
     if st.session_state.input:
         ai_message = get_groq_response(st.session_state.chat_history + [{"role": "user", "content": st.session_state.input}])
         if ai_message:
             update_chat_history(st.session_state.input, ai_message)
-            st.session_state.input = ""  # Clear the input field
-            st.experimental_rerun()  # Refresh the app to display the new message
-    else:
-        st.warning("Please type a message before sending.")
+            clear_input()  # Clear the input field
+
+input_message = st.text_input("Type your message:", key="input", on_change=send_message)
 
 st.button("Send", on_click=send_message, key="send_button")
 
@@ -99,11 +97,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Improved JavaScript to trigger the send button on CMD + Enter
+# Improved JavaScript to prevent form submission and trigger send button on Enter
 st.markdown("""
     <script>
     document.addEventListener("keydown", function(event) {
-        if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+            event.preventDefault();  // Prevent the default form submission
             const sendButton = document.querySelector('button[aria-label="Send"]');
             if (sendButton) {
                 sendButton.click();
