@@ -39,7 +39,7 @@ for message in st.session_state.chat_history:
     if message['role'] == 'user':
         st.markdown(f"<div style='background-color: #e1f5fe; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: right;'>You: {message['content']}</div>", unsafe_allow_html=True)
     elif message['role'] == 'assistant':
-        st.markdown(f"<div style='background-color: #fff3e0; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: left;'>AI: {message['content']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color: #f0f0f0; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: left;'>AI: {message['content']}</div>", unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
 input_message = st.text_input("Type your message:", key="input")
@@ -82,12 +82,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# JavaScript to trigger the send button on CMD + Enter
+# Improved JavaScript to trigger the send button on CMD + Enter
 st.markdown("""
     <script>
     document.addEventListener("keydown", function(event) {
-        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-            document.querySelector('button[title="send"]').click();
+        if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+            const sendButton = document.querySelector('button[title="send"]');
+            if (sendButton) {
+                sendButton.click();
+            }
         }
     });
     </script>
