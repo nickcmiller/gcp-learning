@@ -1,9 +1,7 @@
 import os
-# from openai import OpenAI
 from groq import Groq
 import streamlit as st
 import json
-
 
 # Initialize Groq client
 client = Groq(
@@ -21,21 +19,6 @@ def get_groq_response(messages):
     except Exception as e:
         st.error(f"An error occurred: {e}")
         return None
-
-# # Initialize OpenAI client
-# client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# # Function to get AI response
-# def get_ai_response(messages):
-#     try:
-#         response = client.chat.completions.create(
-#             model="gpt-4o",
-#             messages=messages
-#         )
-#         return response.choices[0].message.content
-#     except Exception as e:
-#         st.error(f"An error occurred: {e}")
-#         return None
 
 # Function to initialize chat history
 def initialize_chat_history():
@@ -63,14 +46,17 @@ st.markdown("</div>", unsafe_allow_html=True)
 
 input_message = st.text_input("Type your message:", key="input")
 
-if st.button("Send", key="send"):
-    if input_message:
-        ai_message = get_groq_response(st.session_state.chat_history + [{"role": "user", "content": input_message}])
+def send_message():
+    if st.session_state.input:
+        ai_message = get_groq_response(st.session_state.chat_history + [{"role": "user", "content": st.session_state.input}])
         if ai_message:
-            update_chat_history(input_message, ai_message)
+            update_chat_history(st.session_state.input, ai_message)
+            st.session_state.input = ""  # Clear the input field
             st.experimental_rerun()  # Refresh the app to display the new message
     else:
         st.warning("Please type a message before sending.")
+
+st.button("Send", on_click=send_message, key="send_button")
 
 # Convert chat history to JSON
 chat_history_json = json.dumps(st.session_state.chat_history)
@@ -118,7 +104,7 @@ st.markdown("""
     <script>
     document.addEventListener("keydown", function(event) {
         if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-            const sendButton = document.querySelector('button[title="send"]');
+            const sendButton = document.querySelector('button[aria-label="Send"]');
             if (sendButton) {
                 sendButton.click();
             }
