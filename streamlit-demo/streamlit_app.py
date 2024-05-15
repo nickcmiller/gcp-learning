@@ -1,27 +1,46 @@
 import os
-from openai import OpenAI
+# from openai import OpenAI
+from groq import Groq
 import streamlit as st
 import json
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Function to initialize chat history
-def initialize_chat_history():
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = [{"role": "system", "content": "You are a helpful assistant."}]
+# Initialize Groq client
+client = Groq(
+    api_key=os.environ.get("GROQ_API_KEY"),
+)
 
-# Function to get AI response
-def get_ai_response(messages):
+# Function to get response from LLama3 via Groq
+def get_groq_response(messages):
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="llama3-8b-8192",
             messages=messages
         )
         return response.choices[0].message.content
     except Exception as e:
         st.error(f"An error occurred: {e}")
         return None
+
+# # Initialize OpenAI client
+# client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# # Function to get AI response
+# def get_ai_response(messages):
+#     try:
+#         response = client.chat.completions.create(
+#             model="gpt-4o",
+#             messages=messages
+#         )
+#         return response.choices[0].message.content
+#     except Exception as e:
+#         st.error(f"An error occurred: {e}")
+#         return None
+
+# Function to initialize chat history
+def initialize_chat_history():
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = [{"role": "system", "content": "You are a helpful assistant."}]
 
 # Function to update chat history
 def update_chat_history(user_message, ai_message):
@@ -46,7 +65,7 @@ input_message = st.text_input("Type your message:", key="input")
 
 if st.button("Send", key="send"):
     if input_message:
-        ai_message = get_ai_response(st.session_state.chat_history + [{"role": "user", "content": input_message}])
+        ai_message = get_groq_response(st.session_state.chat_history + [{"role": "user", "content": input_message}])
         if ai_message:
             update_chat_history(input_message, ai_message)
             st.experimental_rerun()  # Refresh the app to display the new message
@@ -56,7 +75,7 @@ if st.button("Send", key="send"):
 # Convert chat history to JSON
 chat_history_json = json.dumps(st.session_state.chat_history)
 
-# CSS for better styling
+# Enhanced CSS for better styling
 st.markdown("""
     <style>
     .stTextInput div div input {
@@ -64,10 +83,21 @@ st.markdown("""
         border: 2px solid #ccc !important;
         border-radius: 5px !important;
         outline: none !important;
+        box-shadow: none !important;  /* Remove any box shadow which might be causing the red outline */
     }
     .stTextInput div div input:focus {
         outline: 2px solid blue !important;  /* Change outline color to blue when focused */
         border-color: blue !important;  /* Ensure border color is blue when focused */
+        box-shadow: none !important;  /* Remove any box shadow which might be causing the red outline */
+    }
+    /* Override validation styles */
+    .stTextInput div div input:invalid {
+        border: 2px solid blue !important;
+        box-shadow: none !important;
+    }
+    .stTextInput div div input:valid {
+        border: 2px solid blue !important;
+        box-shadow: none !important;
     }
     .stButton button {
         background-color: #ff6f61 !important;
