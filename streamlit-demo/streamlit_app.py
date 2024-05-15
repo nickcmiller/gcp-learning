@@ -31,7 +31,7 @@ def update_chat_history(user_message, ai_message):
 # Initialize chat history
 initialize_chat_history()
 
-st.title("Simple Chat App")
+st.title("Groq Chat App")
 
 # Display chat history in the correct order (from oldest to newest)
 st.markdown("<div style='max-height: 400px; overflow-y: auto; padding: 10px;'>", unsafe_allow_html=True)
@@ -59,25 +59,26 @@ chat_history_json = json.dumps(st.session_state.chat_history)
 # CSS for better styling
 st.markdown("""
     <style>
-    .stTextInput>div>div>input {
-        padding: 10px;
-        border: 2px solid #ccc;
-        border-radius: 5px;
-        outline-color: blue;  /* Change outline color to blue */
+    .stTextInput div div input {
+        padding: 10px !important;
+        border: 2px solid #ccc !important;
+        border-radius: 5px !important;
+        outline: none !important;
     }
-    .stTextInput>div>div>input:focus {
-        outline: 2px solid blue;  /* Change outline color to blue when focused */
+    .stTextInput div div input:focus {
+        outline: 2px solid blue !important;  /* Change outline color to blue when focused */
+        border-color: blue !important;  /* Ensure border color is blue when focused */
     }
-    .stButton>button {
-        background-color: #ff6f61;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 5px;
-        cursor: pointer;
+    .stButton button {
+        background-color: #ff6f61 !important;
+        color: white !important;
+        border: none !important;
+        padding: 10px 20px !important;
+        border-radius: 5px !important;
+        cursor: pointer !important;
     }
-    .stButton>button:hover {
-        background-color: #ff3b2f;
+    .stButton button:hover {
+        background-color: #ff3b2f !important;
     }
     </style>
 """, unsafe_allow_html=True)
