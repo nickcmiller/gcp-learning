@@ -66,10 +66,10 @@ st.markdown("<div style='max-height: 400px; overflow-y: auto; padding: 10px;'>",
 for message in st.session_state.chat_history:
     if message['role'] == 'user':
         # Make the user messages blue and alligned to the right
-        st.markdown(f"<div style='background-color: #e1f5fe; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: right;'>You: {message['content']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color: #e1f5fe; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: right; color: black;'>You: {message['content']}</div>", unsafe_allow_html=True)
     elif message['role'] == 'assistant':
         # Make the assistant messages gray and aligned to the left
-        st.markdown(f"<div style='background-color: #f0f0f0; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: left;'>AI: {message['content']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color: #f0f0f0; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: left; color: black;'>AI: {message['content']}</div>", unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
 # Input field for user messages
