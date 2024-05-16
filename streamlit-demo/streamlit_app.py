@@ -66,10 +66,10 @@ st.markdown("<div style='max-height: 400px; overflow-y: auto; padding: 10px;'>",
 for message in st.session_state.chat_history:
     if message['role'] == 'user':
         # Make the user messages blue and alligned to the right
-        st.markdown(f"<div style='background-color: #e1f5fe; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: right; color: black;'>You: {message['content']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color: #e1f5fe; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: right; color: black; border: 4px solid #b0c7e1;'><b style='font-size: 16px;'>You</b><br> {message['content']}</div>", unsafe_allow_html=True)
     elif message['role'] == 'assistant':
         # Make the assistant messages gray and aligned to the left
-        st.markdown(f"<div style='background-color: #f0f0f0; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: left; color: black;'>AI: {message['content']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color: #f0f0f0; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: left; color: black; border: 4px solid #bcbcbc;'><b style='font-size: 16px;'>AI</b><br> {message['content']}</div>", unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
 # Input field for user messages
@@ -82,34 +82,17 @@ st.button("Send", on_click=send_message, key="send_button")
 chat_history_json = json.dumps(st.session_state.chat_history)
 
 ####################
-# CSS AND JAVASCRIPT
+# STYLING WITH CSS
 ####################
 
-# Enhanced CSS for better styling
+# Changed colors and styles for the better
 st.markdown("""
     <style>
-    .stTextInput div div input {
-        padding: 10px !important;
-        border: 2px solid #ccc !important;
-        border-radius: 5px !important;
-        outline: none !important;
-        box-shadow: none !important;  /* Remove any box shadow which might be causing the red outline */
-    }
-    .stTextInput div div input:focus {
-        outline: 2px solid blue !important;  /* Change outline color to blue when focused */
-        border-color: blue !important;  /* Ensure border color is blue when focused */
-        box-shadow: none !important;  /* Remove any box shadow which might be causing the red outline */
-    }
-    .stTextInput div div input:invalid, .stTextInput div div input:valid {
-        border: 2px solid blue !important;
-        box-shadow: none !important;
-        outline: none !important;
-    }
     .stTextInput .st-c1, .stTextInput .st-c0, .stTextInput .st-bz, .stTextInput .st-by {
-        border-color: blue !important;
+        border-color: #808080 !important;
     }
     .stButton button {
-        background-color: #ff6f61 !important;
+        background-color: #707070 !important;
         color: white !important;
         border: none !important;
         padding: 10px 20px !important;
@@ -117,22 +100,7 @@ st.markdown("""
         cursor: pointer !important;
     }
     .stButton button:hover {
-        background-color: #ff3b2f !important;
+        background-color: #808080 !important;
     }
     </style>
-""", unsafe_allow_html=True)
-
-# Improved JavaScript to prevent form submission and trigger send button on Enter
-st.markdown("""
-    <script>
-    document.addEventListener("keydown", function(event) {
-        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-            event.preventDefault();  // Prevent the default form submission
-            const sendButton = document.querySelector('button[aria-label="Send"]');
-            if (sendButton) {
-                sendButton.click();
-            }
-        }
-    });
-    </script>
 """, unsafe_allow_html=True)
