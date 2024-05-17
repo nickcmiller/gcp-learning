@@ -31,15 +31,17 @@ def generate_response(input_text: str) -> str:
     logger.debug(f"Generating response for input: {input_text}")
     handler = StreamHandler()
     llm = OpenAI(
-        temperature=0.5, 
+        temperature=0.5,
         openai_api_key=openai_api_key,
         streaming=True,
         callbacks=[handler]
     )
     try:
         logger.debug("Invoking LLM...")
-        llm.invoke(input_text)
+        # The invoke method is replaced with the run method to ensure streaming tokens are handled
+        response = llm.run(input_text)
         logger.debug("Invocation complete.")
+        logger.debug(f"Raw response: {response}")  # Log the raw response
     except Exception as e:
         logger.error(f"Error during response generation: {e}", exc_info=True)
         return "Error generating response."
