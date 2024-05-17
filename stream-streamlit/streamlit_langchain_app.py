@@ -1,8 +1,7 @@
 import os
 import logging
 import streamlit as st
-import openai
-import asyncio
+from langchain_openai import OpenAI
 from langchain.callbacks.base import BaseCallbackHandler
 
 # Set up logging
@@ -13,8 +12,6 @@ logger = logging.getLogger(__name__)
 openai_api_key = os.getenv('OPENAI_API_KEY')
 if not openai_api_key:
     logger.error("OpenAI API Key is not set. Please set the API key in the environment variables.")
-else:
-    openai.api_key = openai_api_key
 
 # Custom callback handler to capture streamed responses
 class StreamHandler(BaseCallbackHandler):
@@ -30,38 +27,26 @@ class StreamHandler(BaseCallbackHandler):
     def get_content(self):
         return ''.join(self.content)
 
-async def generate_response(input_text: str) -> str:
+def generate_response(input_text: str) -> str:
     logger.debug(f"Generating response for input: {input_text}")
     handler = StreamHandler()
-
+    llm = OpenAI(
+        temperature=0.5, 
+        openai_api_key=openai_api_key,
+        streaming=True,
+        callbacks=[handler]
+    )
     try:
-        response = await openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": input_text}],
-            max_tokens=256,
-            temperature=0.5,
-            stream=True
-        )
-
+        logger.debug("Invoking LLM...")
+        llm.invoke(input_text)
         logger.debug("Invocation complete.")
-        async for chunk in response:
-            if 'choices' in chunk and len(chunk['choices']) > 0:
-                choice = chunk['choices'][0]
-                if 'delta' in choice and 'content' in choice['delta']:
-                    handler.on_new_token(choice['delta']['content'])
-        
     except Exception as e:
         logger.error(f"Error during response generation: {e}", exc_info=True)
         return "Error generating response."
 
     response_content = handler.get_content()
-    logger.debug(f"Generated response: {response_content}")
+    logger.debug(f"Generated response: {response_content}")  # Debugging: log the final response
     return response_content
-
-def generate_response_sync(input_text: str) -> str:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    return loop.run_until_complete(generate_response(input_text))
 
 st.title("Simple Chat")
 
@@ -83,7 +68,7 @@ if prompt := st.chat_input("What is up?"):
         st.markdown(prompt)
 
     # Generate assistant response
-    response = generate_response_sync(prompt)
+    response = generate_response(prompt)
     
     # Display assistant response in chat message container
     with st.chat_message("assistant"):
