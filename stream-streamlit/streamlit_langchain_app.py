@@ -1,21 +1,31 @@
+import os
 import streamlit as st
-import random
-import time
+from langchain.llms import OpenAI
+from langchain.callbacks.base import BaseCallbackHandler
 
+openai_api_key = os.getenv('OPENAI_API_KEY')
 
-# Streamed response emulator
-def response_generator():
-    response = random.choice(
-        [
-            "Hello there! How can I assist you today?",
-            "Hi, human! Is there anything I can help you with?",
-            "Do you need help?",
-        ]
+# Custom callback handler to capture streamed responses
+class StreamHandler(BaseCallbackHandler):
+    def __init__(self):
+        self.content = []
+
+    def on_new_token(self, token: str):
+        self.content.append(token)
+
+    def get_content(self):
+        return ''.join(self.content)
+
+def generate_response(input_text:str) -> str:
+    handler = StreamHandler()
+    llm = OpenAI(
+        temperature=0.5, 
+        openai_api_key=openai_api_key,
+        streaming=True,
+        callbacks=[handler]
     )
-    for word in response.split():
-        yield word + " "
-        time.sleep(0.05)
-
+    llm(input_text)
+    return handler.get_content()
 
 st.title("Simple chat")
 
@@ -36,8 +46,11 @@ if prompt := st.chat_input("What is up?"):
     with st.chat_message("user"):
         st.markdown(prompt)
 
+    # Generate assistant response
+    response = generate_response(prompt)
+    
     # Display assistant response in chat message container
     with st.chat_message("assistant"):
-        response = st.write_stream(response_generator())
+        st.markdown(response)
     # Add assistant response to chat history
     st.session_state.messages.append({"role": "assistant", "content": response})
