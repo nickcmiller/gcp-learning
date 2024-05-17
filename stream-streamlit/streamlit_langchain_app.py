@@ -15,19 +15,17 @@ if not openai_api_key:
 
 # Custom callback handler to capture streamed responses
 class StreamHandler(BaseCallbackHandler):
-    def __init__(self):
-        self.content = []
+    def __init__(self, container):
+        self.container = container
+        self.text = ""
 
     def on_llm_new_token(self, token: str, **kwargs):
-        self.content.append(token)
-        logger.debug(f"Received token: {token}")  # Debugging: log each token received
-
-    def get_content(self):
-        return ''.join(self.content)
-
+        self.text += token
+        self.container.markdown(self.text)
 def generate_response(input_text: str) -> str:
     logger.debug(f"Generating response for input: {input_text}")
-    handler = StreamHandler()
+    chat_box = st.empty()  # Create an empty container for streaming
+    handler = StreamHandler(chat_box)
     llm = ChatOpenAI(
         model_name="gpt-3.5-turbo",
         temperature=0.5,
@@ -44,7 +42,7 @@ def generate_response(input_text: str) -> str:
         logger.error(f"Error during response generation: {e}", exc_info=True)
         return "Error generating response."
 
-    response_content = handler.get_content()
+    response_content = handler.text
     logger.debug(f"Generated response: {response_content}")  # Debugging: log the final response
     return response_content
 
