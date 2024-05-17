@@ -22,10 +22,10 @@ class StreamHandler(BaseCallbackHandler):
     def on_llm_new_token(self, token: str, **kwargs):
         self.text += token
         self.container.markdown(self.text)
-def generate_response(input_text: str) -> str:
+
+def generate_response(input_text: str, chat_container) -> str:
     logger.debug(f"Generating response for input: {input_text}")
-    chat_box = st.empty()  # Create an empty container for streaming
-    handler = StreamHandler(chat_box)
+    handler = StreamHandler(chat_container)
     llm = ChatOpenAI(
         model_name="gpt-3.5-turbo",
         temperature=0.5,
@@ -66,10 +66,8 @@ if prompt := st.chat_input("What is up?"):
         st.markdown(prompt)
 
     # Generate assistant response
-    response = generate_response(prompt)
+    chat_container = st.chat_message("assistant")
+    response = generate_response(prompt, chat_container)
     
-    # Display assistant response in chat message container
-    with st.chat_message("assistant"):
-        st.markdown(response)
     # Add assistant response to chat history
     st.session_state.messages.append({"role": "assistant", "content": response})
