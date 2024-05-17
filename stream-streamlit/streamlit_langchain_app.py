@@ -35,18 +35,18 @@ async def generate_response(input_text: str) -> str:
     handler = StreamHandler()
 
     try:
-        response = await openai.ChatCompletion.acreate(
-            model="gpt-3.5-turbo",  # Ensure the correct model is used
+        response = await openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": input_text}],
             max_tokens=256,
             temperature=0.5,
-            stream=True  # Enable streaming
+            stream=True
         )
 
         logger.debug("Invocation complete.")
-        async for event in response:
-            if 'choices' in event and len(event['choices']) > 0:
-                choice = event['choices'][0]
+        async for chunk in response:
+            if 'choices' in chunk and len(chunk['choices']) > 0:
+                choice = chunk['choices'][0]
                 if 'delta' in choice and 'content' in choice['delta']:
                     handler.on_new_token(choice['delta']['content'])
         
@@ -55,7 +55,7 @@ async def generate_response(input_text: str) -> str:
         return "Error generating response."
 
     response_content = handler.get_content()
-    logger.debug(f"Generated response: {response_content}")  # Debugging: log the final response
+    logger.debug(f"Generated response: {response_content}")
     return response_content
 
 def generate_response_sync(input_text: str) -> str:
