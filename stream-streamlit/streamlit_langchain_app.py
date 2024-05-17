@@ -2,6 +2,7 @@ import os
 import logging
 import streamlit as st
 import openai
+import asyncio
 from langchain.callbacks.base import BaseCallbackHandler
 
 # Set up logging
@@ -29,25 +30,25 @@ class StreamHandler(BaseCallbackHandler):
     def get_content(self):
         return ''.join(self.content)
 
-def generate_response(input_text: str) -> str:
+async def generate_response(input_text: str) -> str:
     logger.debug(f"Generating response for input: {input_text}")
     handler = StreamHandler()
 
     try:
-        response = openai.Completion.create(
-            model="gpt-3.5-turbo-instruct",
-            prompt=input_text,
+        response = await openai.ChatCompletion.acreate(
+            model="gpt-3.5-turbo",  # Ensure the correct model is used
+            messages=[{"role": "user", "content": input_text}],
             max_tokens=256,
             temperature=0.5,
             stream=True  # Enable streaming
         )
 
         logger.debug("Invocation complete.")
-        for event in response:
+        async for event in response:
             if 'choices' in event and len(event['choices']) > 0:
                 choice = event['choices'][0]
-                if 'text' in choice:
-                    handler.on_new_token(choice['text'])
+                if 'delta' in choice and 'content' in choice['delta']:
+                    handler.on_new_token(choice['delta']['content'])
         
     except Exception as e:
         logger.error(f"Error during response generation: {e}", exc_info=True)
@@ -56,6 +57,11 @@ def generate_response(input_text: str) -> str:
     response_content = handler.get_content()
     logger.debug(f"Generated response: {response_content}")  # Debugging: log the final response
     return response_content
+
+def generate_response_sync(input_text: str) -> str:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    return loop.run_until_complete(generate_response(input_text))
 
 st.title("Simple Chat")
 
@@ -77,7 +83,7 @@ if prompt := st.chat_input("What is up?"):
         st.markdown(prompt)
 
     # Generate assistant response
-    response = generate_response(prompt)
+    response = generate_response_sync(prompt)
     
     # Display assistant response in chat message container
     with st.chat_message("assistant"):
