@@ -21,7 +21,7 @@ class StreamHandler(BaseCallbackHandler):
 
     def on_llm_new_token(self, token: str, **kwargs):
         self.text += token
-        self.container.markdown(self.text)
+        self.container.markdown(self.text, unsafe_allow_html=True)
 
 def generate_response(input_text: str, chat_container) -> str:
     logger.debug(f"Generating response for input: {input_text}")
