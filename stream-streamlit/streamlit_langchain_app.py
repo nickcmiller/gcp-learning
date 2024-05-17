@@ -1,7 +1,7 @@
 import os
 import logging
 import streamlit as st
-from langchain_openai import OpenAI
+import openai
 from langchain.callbacks.base import BaseCallbackHandler
 
 # Set up logging
@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 openai_api_key = os.getenv('OPENAI_API_KEY')
 if not openai_api_key:
     logger.error("OpenAI API Key is not set. Please set the API key in the environment variables.")
+else:
+    openai.api_key = openai_api_key
 
 # Custom callback handler to capture streamed responses
 class StreamHandler(BaseCallbackHandler):
@@ -30,16 +32,23 @@ class StreamHandler(BaseCallbackHandler):
 def generate_response(input_text: str) -> str:
     logger.debug(f"Generating response for input: {input_text}")
     handler = StreamHandler()
-    llm = OpenAI(
-        temperature=0.5, 
-        openai_api_key=openai_api_key,
-        streaming=True,
-        callbacks=[handler]
-    )
+
     try:
-        logger.debug("Invoking LLM...")
-        llm.invoke(input_text)
+        response = openai.Completion.create(
+            model="gpt-3.5-turbo-instruct",
+            prompt=input_text,
+            max_tokens=256,
+            temperature=0.5,
+            stream=True  # Enable streaming
+        )
+
         logger.debug("Invocation complete.")
+        for event in response:
+            if 'choices' in event and len(event['choices']) > 0:
+                choice = event['choices'][0]
+                if 'text' in choice:
+                    handler.on_new_token(choice['text'])
+        
     except Exception as e:
         logger.error(f"Error during response generation: {e}", exc_info=True)
         return "Error generating response."
