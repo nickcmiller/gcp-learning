@@ -8,18 +8,21 @@ from langchain.callbacks.base import BaseCallbackHandler
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Retrieve and log the API key (partially) for debugging
+# Retrieve the API key from environment variables
 openai_api_key = os.getenv('OPENAI_API_KEY')
-logger.debug(f"OpenAI API Key: {openai_api_key[:5]}...")
+if not openai_api_key:
+    logger.error("OpenAI API Key is not set. Please set the API key in the environment variables.")
 
 # Custom callback handler to capture streamed responses
 class StreamHandler(BaseCallbackHandler):
     def __init__(self):
         self.content = []
+        self.tokens_received = 0
 
     def on_new_token(self, token: str):
         self.content.append(token)
-        logger.debug(f"Received token: {token}")  # Debugging: log each token received
+        self.tokens_received += 1
+        logger.debug(f"Received token {self.tokens_received}: {token}")  # Debugging: log each token received
 
     def get_content(self):
         return ''.join(self.content)
@@ -33,34 +36,16 @@ def generate_response(input_text: str) -> str:
         streaming=True,
         callbacks=[handler]
     )
-    # Make sure the invoke method is used
     try:
         logger.debug("Invoking LLM...")
         llm.invoke(input_text)
         logger.debug("Invocation complete.")
     except Exception as e:
-        logger.error(f"Error during response generation: {e}")
+        logger.error(f"Error during response generation: {e}", exc_info=True)
         return "Error generating response."
 
     response_content = handler.get_content()
     logger.debug(f"Generated response: {response_content}")  # Debugging: log the final response
-    return response_content
-
-# Fallback non-streaming function
-def generate_response_non_streaming(input_text: str) -> str:
-    logger.debug(f"Generating non-streaming response for input: {input_text}")
-    llm = OpenAI(
-        temperature=0.5, 
-        openai_api_key=openai_api_key,
-        streaming=False
-    )
-    try:
-        response_content = llm.invoke(input_text)
-    except Exception as e:
-        logger.error(f"Error during non-streaming response generation: {e}")
-        return "Error generating response."
-
-    logger.debug(f"Generated non-streaming response: {response_content}")  # Debugging: log the final response
     return response_content
 
 st.title("Simple Chat")
@@ -83,9 +68,7 @@ if prompt := st.chat_input("What is up?"):
         st.markdown(prompt)
 
     # Generate assistant response
-    # Comment out the streaming response and use non-streaming for testing
-    # response = generate_response(prompt)
-    response = generate_response_non_streaming(prompt)
+    response = generate_response(prompt)
     
     # Display assistant response in chat message container
     with st.chat_message("assistant"):
