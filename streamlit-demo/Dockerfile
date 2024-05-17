@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Copy local files into the Docker image
 COPY ./requirements.txt ./requirements.txt
-COPY ./streamlit_app.py ./streamlit_app.py
+COPY ./streamlit_app.py ./streamlit_langchain_app.py
 
 # Install dependencies
 RUN pip3 install -r requirements.txt
