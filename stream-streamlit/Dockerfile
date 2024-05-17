@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Copy local files into the Docker image
 COPY ./requirements.txt ./requirements.txt
-COPY ./streamlit_app.py ./streamlit_app.py
+COPY ./streamlit_langchain_app.py ./streamlit_langchain_app.py
 
 # Install dependencies
 RUN pip3 install -r requirements.txt
@@ -18,4 +18,4 @@ EXPOSE $PORT
 HEALTHCHECK CMD curl --fail http://localhost:$PORT/_stcore/health
 
 # Run the streamlit command to start the streamlit application
-ENTRYPOINT streamlit run streamlit_app.py --server.port=$PORT --server.address=0.0.0.0
+ENTRYPOINT streamlit run streamlit_langchain_app.py --server.port=$PORT --server.address=0.0.0.0
