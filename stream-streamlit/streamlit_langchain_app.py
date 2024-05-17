@@ -1,7 +1,7 @@
 import os
 import logging
 import streamlit as st
-from langchain_openai import OpenAI
+from langchain_openai import ChatOpenAI
 from langchain.callbacks.base import BaseCallbackHandler
 
 # Set up logging
@@ -17,12 +17,10 @@ if not openai_api_key:
 class StreamHandler(BaseCallbackHandler):
     def __init__(self):
         self.content = []
-        self.tokens_received = 0
 
-    def on_new_token(self, token: str):
+    def on_llm_new_token(self, token: str, **kwargs):
         self.content.append(token)
-        self.tokens_received += 1
-        logger.debug(f"Received token {self.tokens_received}: {token}")  # Debugging: log each token received
+        logger.debug(f"Received token: {token}")  # Debugging: log each token received
 
     def get_content(self):
         return ''.join(self.content)
@@ -30,7 +28,8 @@ class StreamHandler(BaseCallbackHandler):
 def generate_response(input_text: str) -> str:
     logger.debug(f"Generating response for input: {input_text}")
     handler = StreamHandler()
-    llm = OpenAI(
+    llm = ChatOpenAI(
+        model_name="gpt-3.5-turbo",
         temperature=0.5,
         openai_api_key=openai_api_key,
         streaming=True,
@@ -38,8 +37,7 @@ def generate_response(input_text: str) -> str:
     )
     try:
         logger.debug("Invoking LLM...")
-        # The invoke method is replaced with the run method to ensure streaming tokens are handled
-        response = llm.run(input_text)
+        response = llm.invoke(input_text)  # Use invoke instead of __call__
         logger.debug("Invocation complete.")
         logger.debug(f"Raw response: {response}")  # Log the raw response
     except Exception as e:
