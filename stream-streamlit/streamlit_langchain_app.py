@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 import streamlit as st
 from langchain_openai import ChatOpenAI
 from langchain.schema import HumanMessage, SystemMessage, AIMessage
@@ -15,28 +16,28 @@ if not openai_api_key:
     logger.error("OpenAI API Key is not set. Please set the API key in the environment variables.")
 
 class StreamHandler(BaseCallbackHandler):
-    def __init__(self, buffer_size=5):
-        self.text = ""
+    def __init__(self, buffer_size=3):
         self.buffer = []
         self.buffer_size = buffer_size
+
+    async def handle_response(self, response):
+        async for token in response:
+            self.on_llm_new_token(token)
+            if len(self.buffer) >= self.buffer_size:
+                text = ''.join(self.buffer)
+                self.buffer = []
+                yield text
+        if self.buffer:
+            text = ''.join(self.buffer)
+            self.buffer = []
+            yield text
 
     def on_llm_new_token(self, token: str, **kwargs):
         if isinstance(token, str):
             self.buffer.append(token)
-            if len(self.buffer) >= self.buffer_size:
-                self.text += ''.join(self.buffer)
-                yield self.text
-                self.buffer = []
 
-    def on_llm_end(self, response, **kwargs):
-        if self.buffer:
-            self.text += ''.join(self.buffer)
-            yield self.text
-            self.buffer = []
-        return self.text
-
-def generate_response(input_text: str, chat_history: list):
-    handler = StreamHandler(buffer_size=5)  # Adjust buffer size as needed
+async def generate_response(input_text: str, chat_history: list):
+    handler = StreamHandler(buffer_size=3)  # Adjust buffer size as needed
     llm = ChatOpenAI(
         model_name="gpt-4o",
         temperature=0.5,
@@ -59,13 +60,26 @@ def generate_response(input_text: str, chat_history: list):
     messages.append(HumanMessage(content=input_text))
 
     try:
-        response = llm.stream(messages)
+        response = llm.astream(messages)
     except Exception as e:
         logger.error("Error during response generation: %s", e, exc_info=True)
         yield "Error generating response."
 
-    for token in response:
+    async for token in handler.handle_response(response):
         yield token
+
+def generate_response_sync(input_text: str, chat_history: list):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    result = []
+    async_gen = generate_response(input_text, chat_history)
+    while True:
+        try:
+            token = loop.run_until_complete(async_gen.__anext__())
+            result.append(token)
+        except StopAsyncIteration:
+            break
+    return ''.join(result)
 
 st.title("Simple Chat")
 
@@ -92,9 +106,19 @@ if prompt := st.chat_input(st.session_state.current_prompt):
         st.markdown(prompt)
 
     # Generate assistant response
+    response = ""
     chat_container = st.empty()
     with st.chat_message("assistant"):
-        response = st.write_stream(generate_response(prompt, st.session_state.messages))
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        async_gen = generate_response(prompt, st.session_state.messages)
+        while True:
+            try:
+                token = loop.run_until_complete(async_gen.__anext__())
+                response += token
+                chat_container.markdown(response)
+            except StopAsyncIteration:
+                break
     
     # Add assistant response to chat history
     st.session_state.messages.append({"role": "assistant", "content": response})
