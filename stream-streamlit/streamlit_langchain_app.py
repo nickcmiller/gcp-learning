@@ -19,10 +19,14 @@ class StreamHandler(BaseCallbackHandler):
         self.text = ""
 
     def on_llm_new_token(self, token: str, **kwargs):
-        self.text += token
-        yield self.text
+        if isinstance(token, str):
+            self.text += token
+            yield self.text
 
-def generate_response(input_text: str) -> str:
+    def on_llm_end(self, response, **kwargs):
+        return self.text
+
+def generate_response(input_text: str):
     logger.debug(f"Generating response for input: {input_text}")
     handler = StreamHandler()
     llm = ChatOpenAI(
@@ -34,14 +38,15 @@ def generate_response(input_text: str) -> str:
     )
     try:
         logger.debug("Invoking LLM...")
-        response = llm.invoke(input_text)  # Use invoke instead of __call__
+        response = llm.stream(input_text)  # Use stream instead of invoke
         logger.debug("Invocation complete.")
         logger.debug(f"Raw response: {response}")  # Log the raw response
     except Exception as e:
         logger.error(f"Error during response generation: {e}", exc_info=True)
-        return "Error generating response."
+        yield "Error generating response."
 
-    return handler.on_llm_new_token(response)
+    for token in response:
+        yield token
 
 st.title("Simple Chat")
 
