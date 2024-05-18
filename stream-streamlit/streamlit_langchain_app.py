@@ -15,17 +15,16 @@ if not openai_api_key:
 
 # Custom callback handler to capture streamed responses
 class StreamHandler(BaseCallbackHandler):
-    def __init__(self, container):
-        self.container = container
+    def __init__(self):
         self.text = ""
 
     def on_llm_new_token(self, token: str, **kwargs):
         self.text += token
-        self.container.markdown(self.text, unsafe_allow_html=True)
+        yield self.text
 
-def generate_response(input_text: str, chat_container) -> str:
+def generate_response(input_text: str) -> str:
     logger.debug(f"Generating response for input: {input_text}")
-    handler = StreamHandler(chat_container)
+    handler = StreamHandler()
     llm = ChatOpenAI(
         model_name="gpt-3.5-turbo",
         temperature=0.5,
@@ -66,8 +65,9 @@ if prompt := st.chat_input("What is up?"):
         st.markdown(prompt)
 
     # Generate assistant response
-    chat_container = st.chat_message("assistant")
-    response = generate_response(prompt, chat_container)
+    chat_container = st.empty()  # Create an empty container for streaming
+    with st.chat_message("assistant"):
+        response = st.write_stream(generate_response(prompt))  # Use st.write_stream for streaming
     
     # Add assistant response to chat history
     st.session_state.messages.append({"role": "assistant", "content": response})
