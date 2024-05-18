@@ -69,10 +69,11 @@ st.title("Simple Chat")
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": "You are a helpful assistant."}]
 
-# Display chat messages from history on app rerun
+# Display chat messages from history on app rerun, excluding system messages
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+    if message["role"] != "system":
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
 # Accept user input
 if prompt := st.chat_input("What is up?"):
