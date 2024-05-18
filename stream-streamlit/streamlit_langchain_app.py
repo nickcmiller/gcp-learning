@@ -62,12 +62,10 @@ def generate_response(input_text: str, chat_history: list):
 st.title("Simple Chat")
 
 # Initialize chat history
-# prompt_text = "Ask a follow-up question..."
+prompt_text = "Ask a follow-up question..."
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": "You are a helpful assistant."}]
-    # prompt_text = "Ask me anything..."
-# else:
-    # prompt_text = "Ask a follow-up question..."    
+    prompt_text = "Ask me anything..."
 
 # Display chat messages from history on app rerun, excluding system messages
 for message in st.session_state.messages:
@@ -76,7 +74,7 @@ for message in st.session_state.messages:
             st.markdown(message["content"])
 
 # Accept user input
-if prompt := st.chat_input("prompt_text"):
+if prompt := st.chat_input(prompt_text):
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
     # Display user message in chat message container
