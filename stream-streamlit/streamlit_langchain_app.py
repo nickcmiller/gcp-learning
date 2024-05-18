@@ -6,7 +6,7 @@ from langchain.schema import HumanMessage, SystemMessage, AIMessage
 from langchain.callbacks.base import BaseCallbackHandler
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Retrieve the API key from environment variables
@@ -28,7 +28,6 @@ class StreamHandler(BaseCallbackHandler):
         return self.text
 
 def generate_response(input_text: str, chat_history: list):
-    logger.debug(f"Generating response for input: {input_text}")
     handler = StreamHandler()
     llm = ChatOpenAI(
         model_name="gpt-4o",
@@ -54,7 +53,7 @@ def generate_response(input_text: str, chat_history: list):
     try:
         response = llm.stream(messages)
     except Exception as e:
-        logger.error(f"Error during response generation: {e}", exc_info=True)
+        logger.error("Error during response generation: %s", e, exc_info=True)
         yield "Error generating response."
 
     for token in response:
@@ -65,8 +64,10 @@ st.title("Simple Chat")
 # Initialize chat history
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": "You are a helpful assistant."}]
+    logger.info("FALSE\n %s", st.session_state.messages)
     st.session_state.first_question_asked = False
-else;
+else:
+    logger.info("TRUE\n %s", st.session_state.messages)
     # Set first_question_asked to True after the first question is asked
     st.session_state.first_question_asked = True
 
