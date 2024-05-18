@@ -65,8 +65,6 @@ st.title("Simple Chat")
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": "You are a helpful assistant."}]
 
-
-
 # Display chat messages from history on app rerun, excluding system messages
 for message in st.session_state.messages:
     if message["role"] != "system":
@@ -74,7 +72,7 @@ for message in st.session_state.messages:
             st.markdown(message["content"])
 
 if "current_prompt" not in st.session_state:
-    st.session_state.current_prompt = "Ask me anything..."
+    st.session_state.current_prompt = "Ask a follow-up question..." if len(st.session_state.messages) > 1 else "Ask me anything..."
 
 # Accept user input
 if prompt := st.chat_input(st.session_state.current_prompt):
@@ -85,9 +83,7 @@ if prompt := st.chat_input(st.session_state.current_prompt):
         st.markdown(prompt)
 
     # Generate assistant response
-    chat_container = st.empty()  # Create an empty container for streaming
+    chat_container = st.empty()
     with st.chat_message("assistant"):
-        response = st.write_stream(generate_response(prompt, st.session_state.messages))  # Use st.write_stream for streaming
+        response = st.write_stream(generate_response(prompt, st.session_state.messages))
     
-    # Update current prompt based on whether the first question has been asked
-    st.session_state.current_prompt = "Ask a follow-up question..." if len(st.session_state.messages) > 1 else "Ask me anything..."
