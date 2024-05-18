@@ -41,9 +41,7 @@ def generate_response(input_text: str) -> str:
         logger.error(f"Error during response generation: {e}", exc_info=True)
         return "Error generating response."
 
-    response_content = handler.text
-    logger.debug(f"Generated response: {response_content}")  # Debugging: log the final response
-    return response_content
+    return handler.on_llm_new_token(response)
 
 st.title("Simple Chat")
 
