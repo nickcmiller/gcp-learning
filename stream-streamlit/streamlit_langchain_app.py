@@ -14,19 +14,6 @@ openai_api_key = os.getenv('OPENAI_API_KEY')
 if not openai_api_key:
     logger.error("OpenAI API Key is not set. Please set the API key in the environment variables.")
 
-# Custom callback handler to capture streamed responses
-# class StreamHandler(BaseCallbackHandler):
-#     def __init__(self):
-#         self.text = ""
-
-#     def on_llm_new_token(self, token: str, **kwargs):
-#         if isinstance(token, str):
-#             self.text += token
-#             yield self.text
-
-#     def on_llm_end(self, response, **kwargs):
-#         return self.text
-
 class StreamHandler(BaseCallbackHandler):
     def __init__(self, buffer_size=5):
         self.text = ""
@@ -48,16 +35,6 @@ class StreamHandler(BaseCallbackHandler):
             self.buffer = []
         return self.text
 
-# def generate_response(input_text: str, chat_history: list):
-#     handler = StreamHandler()
-#     llm = ChatOpenAI(
-#         model_name="gpt-4o",
-#         temperature=0.5,
-#         openai_api_key=openai_api_key,
-#         streaming=True,
-#         callbacks=[handler]
-#     )
-    
 def generate_response(input_text: str, chat_history: list):
     handler = StreamHandler(buffer_size=5)  # Adjust buffer size as needed
     llm = ChatOpenAI(
