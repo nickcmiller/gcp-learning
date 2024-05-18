@@ -2,6 +2,7 @@ import os
 import logging
 import streamlit as st
 from langchain_openai import ChatOpenAI
+from langchain.schema import HumanMessage, SystemMessage, AIMessage
 from langchain.callbacks.base import BaseCallbackHandler
 
 # Set up logging
@@ -36,9 +37,23 @@ def generate_response(input_text: str, chat_history: list):
         streaming=True,
         callbacks=[handler]
     )
+    
+    # Convert chat history to list of BaseMessages
+    messages = []
+    for message in chat_history:
+        if message["role"] == "user":
+            messages.append(HumanMessage(content=message["content"]))
+        elif message["role"] == "assistant":
+            messages.append(AIMessage(content=message["content"]))
+        elif message["role"] == "system":
+            messages.append(SystemMessage(content=message["content"]))
+
+    # Add the new user message
+    messages.append(HumanMessage(content=input_text))
+
     try:
         logger.debug("Invoking LLM...")
-        response = llm.stream({"messages": chat_history + [{"role": "user", "content": input_text}]})  # Include chat history
+        response = llm.stream(messages)  # Use stream instead of invoke
         logger.debug("Invocation complete.")
         logger.debug(f"Raw response: {response}")  # Log the raw response
     except Exception as e:
