@@ -16,7 +16,7 @@ if not openai_api_key:
     logger.error("OpenAI API Key is not set. Please set the API key in the environment variables.")
 
 class StreamHandler(BaseCallbackHandler):
-    def __init__(self, buffer_size=3):
+    def __init__(self, buffer_size=1):  # Reduced buffer size for more prompt updates
         self.buffer = []
         self.buffer_size = buffer_size
 
@@ -37,7 +37,7 @@ class StreamHandler(BaseCallbackHandler):
             self.buffer.append(token)
 
 async def generate_response(input_text: str, chat_history: list):
-    handler = StreamHandler(buffer_size=3)  # Adjust buffer size as needed
+    handler = StreamHandler(buffer_size=1)  # Reduced buffer size
     llm = ChatOpenAI(
         model_name="gpt-4o",
         temperature=0.5,
