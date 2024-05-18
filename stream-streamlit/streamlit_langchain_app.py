@@ -64,12 +64,8 @@ st.title("Simple Chat")
 # Initialize chat history
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": "You are a helpful assistant."}]
-    logger.info("FALSE\n %s", st.session_state.messages)
     st.session_state.first_question_asked = False
-else:
-    logger.info("TRUE\n %s", st.session_state.messages)
-    # Set first_question_asked to True after the first question is asked
-    st.session_state.first_question_asked = True
+    
 
 # Display chat messages from history on app rerun, excluding system messages
 for message in st.session_state.messages:
@@ -78,6 +74,8 @@ for message in st.session_state.messages:
             st.markdown(message["content"])
 
 # Set prompt text based on whether the first question has been asked
+logger.info("SESSION STATE MESSAGES:\n %s", st.session_state.messages)
+logger.info("FIRST QUESTION ASKED: %s", st.session_state.first_question_asked)
 prompt_text = "Ask a follow-up question..." if st.session_state.first_question_asked else "Ask me anything..."
 
 # Accept user input
@@ -95,3 +93,6 @@ if prompt := st.chat_input(prompt_text):
     
     # Add assistant response to chat history
     st.session_state.messages.append({"role": "assistant", "content": response})
+
+    # Set first_question_asked to True after the first question is asked
+    st.session_state.first_question_asked = True
