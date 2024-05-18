@@ -26,7 +26,7 @@ class StreamHandler(BaseCallbackHandler):
     def on_llm_end(self, response, **kwargs):
         return self.text
 
-def generate_response(input_text: str):
+def generate_response(input_text: str, chat_history: list):
     logger.debug(f"Generating response for input: {input_text}")
     handler = StreamHandler()
     llm = ChatOpenAI(
@@ -38,7 +38,7 @@ def generate_response(input_text: str):
     )
     try:
         logger.debug("Invoking LLM...")
-        response = llm.stream(input_text)  # Use stream instead of invoke
+        response = llm.stream({"messages": chat_history + [{"role": "user", "content": input_text}]})  # Include chat history
         logger.debug("Invocation complete.")
         logger.debug(f"Raw response: {response}")  # Log the raw response
     except Exception as e:
@@ -52,7 +52,7 @@ st.title("Simple Chat")
 
 # Initialize chat history
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = [{"role": "system", "content": "You are a helpful assistant."}]
 
 # Display chat messages from history on app rerun
 for message in st.session_state.messages:
@@ -70,7 +70,7 @@ if prompt := st.chat_input("What is up?"):
     # Generate assistant response
     chat_container = st.empty()  # Create an empty container for streaming
     with st.chat_message("assistant"):
-        response = st.write_stream(generate_response(prompt))  # Use st.write_stream for streaming
+        response = st.write_stream(generate_response(prompt, st.session_state.messages))  # Use st.write_stream for streaming
     
     # Add assistant response to chat history
     st.session_state.messages.append({"role": "assistant", "content": response})
