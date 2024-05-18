@@ -15,20 +15,51 @@ if not openai_api_key:
     logger.error("OpenAI API Key is not set. Please set the API key in the environment variables.")
 
 # Custom callback handler to capture streamed responses
+# class StreamHandler(BaseCallbackHandler):
+#     def __init__(self):
+#         self.text = ""
+
+#     def on_llm_new_token(self, token: str, **kwargs):
+#         if isinstance(token, str):
+#             self.text += token
+#             yield self.text
+
+#     def on_llm_end(self, response, **kwargs):
+#         return self.text
+
 class StreamHandler(BaseCallbackHandler):
-    def __init__(self):
+    def __init__(self, buffer_size=5):
         self.text = ""
+        self.buffer = []
+        self.buffer_size = buffer_size
 
     def on_llm_new_token(self, token: str, **kwargs):
         if isinstance(token, str):
-            self.text += token
-            yield self.text
+            self.buffer.append(token)
+            if len(self.buffer) >= self.buffer_size:
+                self.text += ''.join(self.buffer)
+                yield self.text
+                self.buffer = []
 
     def on_llm_end(self, response, **kwargs):
+        if self.buffer:
+            self.text += ''.join(self.buffer)
+            yield self.text
+            self.buffer = []
         return self.text
 
+# def generate_response(input_text: str, chat_history: list):
+#     handler = StreamHandler()
+#     llm = ChatOpenAI(
+#         model_name="gpt-4o",
+#         temperature=0.5,
+#         openai_api_key=openai_api_key,
+#         streaming=True,
+#         callbacks=[handler]
+#     )
+    
 def generate_response(input_text: str, chat_history: list):
-    handler = StreamHandler()
+    handler = StreamHandler(buffer_size=5)  # Adjust buffer size as needed
     llm = ChatOpenAI(
         model_name="gpt-4o",
         temperature=0.5,
@@ -36,7 +67,7 @@ def generate_response(input_text: str, chat_history: list):
         streaming=True,
         callbacks=[handler]
     )
-    
+
     # Convert chat history to list of BaseMessages
     messages = []
     for message in chat_history:
@@ -72,12 +103,13 @@ for message in st.session_state.messages:
             st.markdown(message["content"])
 
 if "current_prompt" not in st.session_state:
-    st.session_state.current_prompt = "Ask a follow-up question..." if len(st.session_state.messages) > 1 else "Ask me anything..."
+    st.session_state.current_prompt = "Ask me anything..." if len(st.session_state.messages) > 2 else "Ask a follow-up question..."
 
 # Accept user input
 if prompt := st.chat_input(st.session_state.current_prompt):
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
+    
     # Display user message in chat message container
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -87,3 +119,5 @@ if prompt := st.chat_input(st.session_state.current_prompt):
     with st.chat_message("assistant"):
         response = st.write_stream(generate_response(prompt, st.session_state.messages))
     
+    # Add assistant response to chat history
+    st.session_state.messages.append({"role": "assistant", "content": response})
