@@ -31,7 +31,7 @@ def generate_response(input_text: str, chat_history: list):
     logger.debug(f"Generating response for input: {input_text}")
     handler = StreamHandler()
     llm = ChatOpenAI(
-        model_name="gpt-3.5-turbo",
+        model_name="gpt-4o",
         temperature=0.5,
         openai_api_key=openai_api_key,
         streaming=True,
@@ -52,10 +52,7 @@ def generate_response(input_text: str, chat_history: list):
     messages.append(HumanMessage(content=input_text))
 
     try:
-        logger.debug("Invoking LLM...")
-        response = llm.stream(messages)  # Use stream instead of invoke
-        logger.debug("Invocation complete.")
-        logger.debug(f"Raw response: {response}")  # Log the raw response
+        response = llm.stream(messages)
     except Exception as e:
         logger.error(f"Error during response generation: {e}", exc_info=True)
         yield "Error generating response."
