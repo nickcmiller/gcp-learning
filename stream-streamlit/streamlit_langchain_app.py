@@ -6,17 +6,15 @@ from langchain_openai import ChatOpenAI
 from langchain.schema import HumanMessage, SystemMessage, AIMessage
 from langchain.callbacks.base import BaseCallbackHandler
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Retrieve the API key from environment variables
 openai_api_key = os.getenv('OPENAI_API_KEY')
 if not openai_api_key:
     logger.error("OpenAI API Key is not set. Please set the API key in the environment variables.")
 
 class StreamHandler(BaseCallbackHandler):
-    def __init__(self, buffer_size=1):  # Reduced buffer size for more prompt updates
+    def __init__(self, buffer_size=5):
         self.buffer = []
         self.buffer_size = buffer_size
 
@@ -37,16 +35,15 @@ class StreamHandler(BaseCallbackHandler):
             self.buffer.append(token)
 
 async def generate_response(input_text: str, chat_history: list):
-    handler = StreamHandler(buffer_size=1)  # Reduced buffer size
+    handler = StreamHandler(buffer_size=5)  # Increase buffer size for batch updates
     llm = ChatOpenAI(
-        model_name="gpt-4o",
+        model_name="gpt-3.5-turbo",
         temperature=0.5,
         openai_api_key=openai_api_key,
         streaming=True,
         callbacks=[handler]
     )
 
-    # Convert chat history to list of BaseMessages
     messages = []
     for message in chat_history:
         if message["role"] == "user":
@@ -56,7 +53,6 @@ async def generate_response(input_text: str, chat_history: list):
         elif message["role"] == "system":
             messages.append(SystemMessage(content=message["content"]))
 
-    # Add the new user message
     messages.append(HumanMessage(content=input_text))
 
     try:
@@ -68,26 +64,27 @@ async def generate_response(input_text: str, chat_history: list):
     async for token in handler.handle_response(response):
         yield token
 
-def generate_response_sync(input_text: str, chat_history: list):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    result = []
-    async_gen = generate_response(input_text, chat_history)
-    while True:
-        try:
-            token = loop.run_until_complete(async_gen.__anext__())
-            result.append(token)
-        except StopAsyncIteration:
-            break
-    return ''.join(result)
+async def generate_and_display_response(prompt, messages):
+    response = ""
+    assistant_message_container = st.empty()
+    assistant_message = ""
+
+    with assistant_message_container.container():
+        async_gen = generate_response(prompt, messages)
+        async for token in async_gen:
+            response += token
+            assistant_message += token
+            # Use st.chat_message to keep the format consistent
+            assistant_message_container.chat_message("assistant").markdown(assistant_message)
+    
+    st.session_state.messages.append({"role": "assistant", "content": assistant_message})
+    return response
 
 st.title("Simple Chat")
 
-# Initialize chat history
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": "You are a helpful assistant."}]
 
-# Display chat messages from history on app rerun, excluding system messages
 for message in st.session_state.messages:
     if message["role"] != "system":
         with st.chat_message(message["role"]):
@@ -96,29 +93,10 @@ for message in st.session_state.messages:
 if "current_prompt" not in st.session_state:
     st.session_state.current_prompt = "Ask me anything..." if len(st.session_state.messages) > 2 else "Ask a follow-up question..."
 
-# Accept user input
 if prompt := st.chat_input(st.session_state.current_prompt):
-    # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    # Display user message in chat message container
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Generate assistant response
-    response = ""
-    chat_container = st.empty()
-    with st.chat_message("assistant"):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        async_gen = generate_response(prompt, st.session_state.messages)
-        while True:
-            try:
-                token = loop.run_until_complete(async_gen.__anext__())
-                response += token
-                chat_container.markdown(response)
-            except StopAsyncIteration:
-                break
-    
-    # Add assistant response to chat history
-    st.session_state.messages.append({"role": "assistant", "content": response})
+    asyncio.run(generate_and_display_response(prompt, st.session_state.messages))
