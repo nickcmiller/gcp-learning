@@ -75,7 +75,7 @@ class StreamHandler(BaseCallbackHandler):
 
 async def generate_response(input_text: str, chat_history: list) -> Generator[str, None, None]:
     """
-    Generates a response using the ChatOpenAI model.
+    Generates a response using the ChatGroq model.
 
     Args:
         input_text (str): The user's input text.
@@ -165,9 +165,10 @@ async def generate_and_display_response(prompt: str, messages: list) -> str:
             assistant_message_container.chat_message("assistant").markdown(assistant_message)
     
     st.session_state.messages.append({"role": "assistant", "content": assistant_message})
+    
     return response
 
-st.title("Simple Chat")
+st.title("Groq Chat")
 
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": "You are a helpful assistant."}]
@@ -185,7 +186,7 @@ for message in st.session_state.messages:
             st.markdown(message["content"])
 
 if "current_prompt" not in st.session_state:
-    st.session_state.current_prompt = "Ask me anything..." if len(st.session_state.messages) > 2 else "Ask a follow-up question..."
+    st.session_state.current_prompt = "Ask me anything..."
 
 # Check if the user has entered a prompt in the chat input field.
 # The ':=' operator is known as the 'walrus operator' and is used to assign values to variables as part of an expression.
@@ -208,3 +209,8 @@ if prompt := st.chat_input(st.session_state.current_prompt):
     # The 'asyncio.run' function is used to run the 'generate_and_display_response' function, which is an asynchronous function.
     # The 'generate_and_display_response' function takes the user's prompt and the chat history as arguments.
     asyncio.run(generate_and_display_response(prompt, st.session_state.messages))
+
+    # Update the current prompt in the session state to prompt the user to ask a follow-up question.
+    if st.session_state.current_prompt == "Ask me anything...":
+        st.session_state.current_prompt = "Ask a follow-up question..."
+        st.rerun()
