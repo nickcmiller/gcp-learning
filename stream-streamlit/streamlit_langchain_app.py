@@ -1,7 +1,7 @@
 import os
 import logging
 import asyncio
-from typing import Generator
+from typing import AsyncGenerator
 import streamlit as st
 from langchain_groq import ChatGroq
 from langchain.schema import HumanMessage, SystemMessage, AIMessage
@@ -13,7 +13,7 @@ groq_api_key = os.getenv('GROQ_API_KEY')
 if not groq_api_key:
     logger.error("Groq API Key is not set. Please set the API key in the environment variables.")
 
-async def generate_response(input_text: str, chat_history: list) -> Generator[str, None, None]:
+async def generate_response(input_text: str, chat_history: list) -> AsyncGenerator[str, None]:
     """
     Generates a response using the ChatGroq model.
 
@@ -25,7 +25,7 @@ async def generate_response(input_text: str, chat_history: list) -> Generator[st
         str: The generated response tokens.
 
     Returns:
-        Generator[str, None, None]: A generator that yields the response tokens.
+        AsyncGenerator: An asynchronous generator that yields the response tokens.
     """
     llm = ChatGroq(
         model_name="llama3-70b-8192",
@@ -56,7 +56,8 @@ async def generate_response(input_text: str, chat_history: list) -> Generator[st
     messages.append(HumanMessage(content=input_text))
 
     try:
-        # Generate a response using the assistant's streaming method with the list of messages
+        # Call the astream method of the ChatGroq model to generate a response based on the input text and chat history
+        # The astream method returns an asynchronous generator that yields response tokens
         response = llm.astream(messages)
     except Exception as e:
         logger.error("Error during response generation: %s", e, exc_info=True)
@@ -64,7 +65,6 @@ async def generate_response(input_text: str, chat_history: list) -> Generator[st
 
     # Iterate over the response tokens and yield each token
     async for token in response:
-        logger.info(f"Response token: {token}")
         yield token.content
 
 async def generate_and_display_response(prompt: str, messages: list) -> str:
