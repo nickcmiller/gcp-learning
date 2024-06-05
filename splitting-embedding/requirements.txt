@@ -1,0 +1,7 @@
+llama-index
+llama-index-core
+llama-index-embeddings-huggingface
+llama-index-llms-groq
+google-cloud-aiplatform
+python-dotenv
+
