@@ -13,8 +13,9 @@ global_region=""
 
 aiplatform.init(project=global_project_id, location=global_region)
 
+# Create a bucket
 def create_bucket(bucket_name: str, region: str=global_region, project_id: str=global_project_id):
-    # Create a bucket
+    
     storage_client = storage.Client(project=project_id)
     bucket = storage_client.bucket(bucket_name)
     
@@ -26,6 +27,7 @@ def create_bucket(bucket_name: str, region: str=global_region, project_id: str=g
 
     return bucket
 
+# Create an index
 def create_index(bucket_name: str, display_name: str, region: str=global_region, project_id: str=global_project_id):
 
     index = aiplatform.MatchingEngineIndex.create_tree_ah_index(
@@ -39,16 +41,19 @@ def create_index(bucket_name: str, display_name: str, region: str=global_region,
         display_name=display_name
     )
     index.deploy(endpoint=endpoint)
+    
     return {
         "endpoint": endpoint,
         "index": index
     }
 
 # Embed Documents Using LlamaIndex
-
 def embed_documents(data_path: str):
+    
     Settings.embed_model = VertexAIEmbedding(model_name="text-embedding-004")
+    
     documents = SimpleDirectoryReader(data_path).load_data()
+    
     index = VectorStoreIndex.from_documents(documents)
 
     return index
@@ -56,25 +61,30 @@ def embed_documents(data_path: str):
 # Save Embeddings to Vertex AI
 
 def save_embeddings_to_vertex_ai(index: VectorStoreIndex, endpoint: aiplatform.MatchingEngineIndexEndpoint):
-        filters = MetadataFilters(
-            filters=[
-                MetadataFilter(key="category", operator=FilterOperator.EQUAL, value="finance")
-            ]
-        )
+    
+    filters = MetadataFilters(
+        filters=[
+            MetadataFilter(key="category", operator=FilterOperator.EQUAL, value="finance")
+        ]
+    )
 
-        index.save_to_vertex_ai(
-            endpoint=endpoint,
-            gcs_bucket="your_gcs_bucket",
-            filters=filters
-        )
+    index.save_to_vertex_ai(
+        endpoint=endpoint,
+        gcs_bucket="your_gcs_bucket",
+        filters=filters
+    )
+
+    return "Embeddings saved to Vertex AI"
 
 # Query the Index
 
 def query_index(index: VectorStoreIndex, query: str):
+    
     query_engine = index.as_query_engine()
 
     response = query_engine.query("your query string")
-    print(response)
+    
+    return response
 
 if __name__ == "__main__":
     bucket = create_bucket("my_gcs_bucket")
