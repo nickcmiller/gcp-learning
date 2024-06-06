@@ -1,9 +1,10 @@
 llama-index
 llama-index-core
 llama-index-embeddings-huggingface
+llama-index-embeddings-vertex
 llama-index-llms-groq
 llama-index-llms-vertex
-llama-index-vector-stores-vertex 
+llama-index-vector-stores-vertexaivectorsearch
 google-cloud-aiplatform
 python-dotenv
 
