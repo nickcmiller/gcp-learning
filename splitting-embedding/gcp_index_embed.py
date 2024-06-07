@@ -1,199 +1,152 @@
-from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings, StorageContext
-from llama_index.vector_stores.vertexaivectorsearch import VertexAIVectorStore
-from llama_index.embeddings.vertex import VertexTextEmbedding
-from llama_index.core.vector_stores.types import MetadataFilters, MetadataFilter, FilterOperator
+from google.cloud import aiplatform
 
-from google.cloud import aiplatform, storage
-from google.auth import default
-from google.cloud.exceptions import Conflict
-
-from typing import Dict, Any, List
 import logging
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
-logging.basicConfig(level=logging.INFO)
+PROJECT_ID = os.getenv("PROJECT_ID")
+REGION = os.getenv("REGION")
+GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME")
+GCS_BUCKET_URI = os.getenv("GCS_BUCKET_URI")
+VS_DIMENSIONS = os.getenv("VS_DIMENSIONS")
+APPROXIMATE_NEIGHBORS_COUNT = os.getenv("APPROXIMATE_NEIGHBORS_COUNT")
+VS_INDEX_NAME = os.getenv("VS_INDEX_NAME")
+VS_INDEX_ENDPOINT_NAME = os.getenv("VS_INDEX_ENDPOINT_NAME")
+DEPLOYED_INDEX_ID = os.getenv("DEPLOYED_INDEX_ID")
 
-def get_project_id_by_name(target_project_name):
-       """Retrieve the project ID given a project name."""
-       client = resource_manager.Client()
-       for project in client.list_projects():
-           if project.name == target_project_name:
-               return project.project_id
-       return None
+aiplatform.init(project=PROJECT_ID, location=REGION)
 
-def create_bucket(index_bucket_name, region, project_id):
-    credentials, _ = default()
-    storage_client = storage.Client(credentials=credentials, project=project_id)
-    
-    try:
-        bucket = storage_client.create_bucket(index_bucket_name, location=region)
-        logging.info(f"Bucket {index_bucket_name} created successfully in region {region}.")
-    except Conflict:
-        logging.info(f"Bucket {index_bucket_name} already exists.")
-        bucket = storage_client.bucket(index_bucket_name)
-    except Exception as e:
-        logging.error(f"An error occurred: {e}")
-        bucket = None
-    
-    return bucket
+def create_index(
+    index_name:str, 
+    dimensions:int, 
+    distance_measure_type:str, 
+    shard_size:str, 
+    index_update_method:str, 
+    approximate_neighbors_count:int
+) -> aiplatform.MatchingEngineIndex:
+    """
+        Creates a Vector Search index.
 
-def query_index(index, query):
-    query_engine = index.as_query_engine()
-    response = query_engine.query(query)
-    return response
+        Args:
+        index_name (str): The name of the index to be created.
+        dimensions (int): The number of dimensions for the index.
+        distance_measure_type (str): The type of distance measure to use.
+        shard_size (str): The size of the shard.
+        index_update_method (str): The method to use for updating the index.
+        approximate_neighbors_count (int): The approximate number of neighbors to consider.
 
-class VertexAIIndexManager:
-    def __init__(
-        self, 
-        project_id, 
-        region, 
-        index_id, 
-        endpoint_id, 
-        endpoint_name, 
-        index_bucket_name, 
-        staging_bucket_name, 
-        embed_model_name, 
-        dimensions=768, 
-        approximate_neighbors_count=150
-    ):
-        self.project_id = project_id
-        self.region = region
-        self.index_id = index_id
-        self.endpoint_id = endpoint_id
-        self.endpoint_name = endpoint_name
-        self.index_bucket_name = index_bucket_name
-        self.staging_bucket_name = staging_bucket_name
-        self.embed_model_name = embed_model_name
-        self.dimensions = dimensions
-        self.approximate_neighbors_count = approximate_neighbors_count
-        
-        aiplatform.init(
-            project=self.project_id, 
-            location=self.region, 
-            staging_bucket=f"gs://{self.staging_bucket_name}"
+        Returns:
+        aiplatform.MatchingEngineIndex: The created Vector Search index.
+    """
+    # Check if the index exists
+    index_names = [
+        index.resource_name
+        for index in aiplatform.MatchingEngineIndex.list(
+            filter=f"display_name={index_name}"
         )
-    
-    def create_index(self):
-        index = aiplatform.MatchingEngineIndex.create_tree_ah_index(
-            display_name=self.index_id,
-            contents_delta_uri=[f"gs://{self.index_bucket_name}"],
-            dimensions=self.dimensions,
-            approximate_neighbors_count=self.approximate_neighbors_count,
-            index_update_method="BATCH_UPDATE"
+    ]
+
+    if len(index_names) == 0:
+        logging.info(f"Creating Vector Search index {index_name} ...")
+        try:
+            vs_index = aiplatform.MatchingEngineIndex.create_tree_ah_index(
+                display_name=VS_INDEX_NAME,
+                dimensions=VS_DIMENSIONS,
+                distance_measure_type="DOT_PRODUCT_DISTANCE",
+                shard_size="SHARD_SIZE_SMALL",
+                index_update_method="STREAM_UPDATE",
+                approximate_neighbors_count=APPROXIMATE_NEIGHBORS_COUNT,
+            )
+            logging.info(
+                f"Vector Search index {vs_index.display_name} created with resource name {vs_index.resource_name}"
+            )
+            return vs_index
+        except Exception as e:
+            logging.error(f"Failed to create Vector Search index: {e}")
+    else:
+        vs_index = aiplatform.MatchingEngineIndex(index_name=index_names[0])
+        logging.info(
+            f"Vector Search index {vs_index.display_name} exists with resource name {vs_index.resource_name}"
         )
-        return index
-    
-    def deploy_index_and_endpoint():
-        endpoint = aiplatform.MatchingEngineIndexEndpoint.create(
-            display_name=self.endpoint_name,
-            enable_public_endpoint=True
+        return vs_index
+
+def create_endpoint(endpoint_name:str) -> aiplatform.MatchingEngineIndexEndpoint:
+    """
+        Creates a Vector Search index endpoint.
+
+        Args:
+        endpoint_name (str): The name of the index endpoint to be created.
+
+        Returns:
+        aiplatform.MatchingEngineIndexEndpoint: The created Vector Search index endpoint.
+    """
+    endpoint_names = [
+        endpoint.resource_name
+        for endpoint in aiplatform.MatchingEngineIndexEndpoint.list(
+            filter=f"display_name={endpoint_name}"
         )
-        
-        deployed_index = endpoint.deploy_index(
-            index=index, 
-            deployed_index_id=self.index_id
+    ]
+
+    if len(endpoint_names) == 0:
+        logging.info(
+            f"Creating Vector Search index endpoint {endpoint_name} ..."
+        )
+        vs_endpoint = aiplatform.MatchingEngineIndexEndpoint.create(
+            display_name=VS_INDEX_ENDPOINT_NAME, public_endpoint_enabled=True
+        )
+        logging.info(
+            f"Vector Search index endpoint {vs_endpoint.display_name} created with resource name {vs_endpoint.resource_name}"
+        )
+        return vs_endpoint
+    else:
+        vs_endpoint = aiplatform.MatchingEngineIndexEndpoint(
+            index_endpoint_name=endpoint_names[0]
+        )
+        logging.info(
+            f"Vector Search index endpoint {vs_endpoint.display_name} exists with resource name {vs_endpoint.resource_name}"
+        )
+        return vs_endpoint
+
+def deploy_index_at_endpoint(
+    index:aiplatform.MatchingEngineIndex, 
+    endpoint:aiplatform.MatchingEngineIndexEndpoint, 
+    deployed_index_id:str, 
+    display_name:str, 
+    machine_type:str="e2-standard-16", 
+    min_replica_count:int=1, 
+    max_replica_count:int=1
+):
+    # check if endpoint exists
+    index_endpoints = [
+        (deployed_index.index_endpoint, deployed_index.deployed_index_id)
+        for deployed_index in index.deployed_indexes
+    ]
+
+    if len(index_endpoints) == 0:
+        print(
+            f"Deploying Vector Search index {index.display_name} at endpoint {endpoint.display_name} ..."
+        )
+        vs_deployed_index = endpoint.deploy_index(
+            index=index,
+            deployed_index_id=deployed_index_id,
+            display_name=VS_INDEX_NAME,
+            machine_type="e2-standard-16",
+            min_replica_count=1,
+            max_replica_count=1,
+        )
+        logging.info(
+            f"Vector Search index {index.display_name} is deployed at endpoint {endpoint.display_name}"
         )
 
-        return {
-            "endpoint": endpoint,
-            "deployed_index": deployed_index
-        }
-    
-    def initialize_vector_store(self, documents, endpoint_id):
-        print(f"project_id: {self.project_id}\nregion: {self.region}\nindex_id: {self.index_id}\nendpoint_id: {endpoint_id}")
-        print(f"{type(self.project_id)}, {type(self.region)}, {type(self.index_id)}, {type(endpoint_id)}")
-        
-        vector_store = VertexAIVectorStore(
-            project_id=self.project_id,
-            region=self.region,
-            index_id=self.index_id,
-            endpoint_id=endpoint_id,
-            gcs_bucket_name=self.staging_bucket_name
+        return vs_deployed_index
+    else:
+        vs_deployed_index = aiplatform.MatchingEngineIndexEndpoint(
+            index_endpoint_name=index_endpoints[0][0]
+        )
+        logging.info(
+            f"Vector Search index {index.display_name} is already deployed at endpoint {endpoint.display_name}"
         )
 
-        # configure embedding model
-        embed_model = VertexTextEmbedding(
-            model_name=self.embed_model_name,
-            project=self.project_id,
-            location=self.region,
-        )
-
-        # setup the index/query process, ie the embedding model (and completion if used)
-        Settings.embed_model = embed_model
-
-        storage_context = StorageContext.from_defaults(vector_store=vector_store)
-        
-        vector_store_index = VectorStoreIndex.from_documents(
-            documents, 
-            storage_context=storage_context
-        )
-
-        return vector_store_index
-
-
-if __name__ == "__main__":
-    project_id = "545919198487"
-    region = "us-west4"
-    index_id = "491314571848450048"
-    index_bucket_name = "split-embeddings-bucket-189654"
-    staging_bucket_name = "split-embeddings-staging-bucket-189654"
-    endpoint_name = "split_embeddings_endpoint"
-    endpoint_id = "822469881948536832"
-    embed_model_name = "textembedding-gecko@003"
-
-    manager = VertexAIIndexManager(
-        project_id=project_id,
-        region=region,
-        index_id=index_id,
-        index_bucket_name=index_bucket_name,
-        staging_bucket_name=staging_bucket_name,
-        endpoint_name=endpoint_name,
-        endpoint_id=endpoint_id,
-        embed_model_name=embed_model_name,
-        dimensions=768,
-        approximate_neighbors_count=150
-    )
-    
-    if False:
-        index_bucket = create_bucket(index_bucket_name, region, project_id)
-        print(f"Index Bucket: {index_bucket}")
-
-    if True:
-        staging_bucket = create_bucket(staging_bucket_name, region, project_id)
-        print(f"Staging Bucket: {staging_bucket}")
-
-    
-    
-    if True:
-        index = manager.create_index()
-        print(f"Index Data: {index}")
-
-    if True:
-        index_endpoint = manager.deploy_index_and_endpoint()
-        print(f"Index Endpoint: {index_endpoint}")
-
-
-    if False:
-        project_id = "545919198487"
-        region = "us-west4"
-        index_endpoint_id = "822469881948536832"
-
-        client = aiplatform.gapic.IndexEndpointServiceClient(client_options={"api_endpoint": f"{region}-aiplatform.googleapis.com"})
-        index_endpoint = client.index_endpoint_path(project=project_id, location=region, index_endpoint=index_endpoint_id)
-
-        print(f"Index Endpoint: {index_endpoint}")
-
-    if True: 
-        import os
-        cwd = os.getcwd()
-        pdf_file_path = f"{cwd}/file_directory/"
-        documents = SimpleDirectoryReader(pdf_file_path).load_data()   
-        vector_store_index = manager.initialize_vector_store(documents, endpoint_id)
-        print(f"Vector Store Index: {vector_store_index}")
-    
-    if False:
-        # Example usage of query_index
-        index = index_data["index"]
-        query = "What is this about?"
-        response = query_index(index, query)
-        print(f"Query Response: {response}")
+        return vs_deployed_index
 
