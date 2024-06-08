@@ -1,5 +1,21 @@
 from google.cloud import aiplatform
 
+from llama_index.core import (
+    StorageContext,
+    Settings,
+    VectorStoreIndex,
+    SimpleDirectoryReader,
+)
+from llama_index.core.schema import TextNode
+from llama_index.core.vector_stores.types import (
+    MetadataFilters,
+    MetadataFilter,
+    FilterOperator,
+)
+from llama_index.llms.vertex import Vertex
+from llama_index.embeddings.vertex import VertexTextEmbedding
+from llama_index.vector_stores.vertexaivectorsearch import VertexAIVectorStore
+
 import logging
 from dotenv import load_dotenv
 import os
@@ -71,7 +87,11 @@ def create_index(
         )
         return vs_index
 
-def create_endpoint(endpoint_name:str) -> aiplatform.MatchingEngineIndexEndpoint:
+def create_endpoint(
+    endpoint_name:str, 
+    public_endpoint_enabled:bool=False,
+    enable_private_service_connect:bool=True
+) -> aiplatform.MatchingEngineIndexEndpoint:
     """
         Creates a Vector Search index endpoint.
 
@@ -93,7 +113,9 @@ def create_endpoint(endpoint_name:str) -> aiplatform.MatchingEngineIndexEndpoint
             f"Creating Vector Search index endpoint {endpoint_name} ..."
         )
         vs_endpoint = aiplatform.MatchingEngineIndexEndpoint.create(
-            display_name=VS_INDEX_ENDPOINT_NAME, public_endpoint_enabled=True
+            display_name=endpoint_name, 
+            public_endpoint_enabled=public_endpoint_enabled,
+            enable_private_service_connect=enable_private_service_connect
         )
         logging.info(
             f"Vector Search index endpoint {vs_endpoint.display_name} created with resource name {vs_endpoint.resource_name}"
@@ -116,8 +138,8 @@ def deploy_index_at_endpoint(
     machine_type:str="e2-standard-16", 
     min_replica_count:int=1, 
     max_replica_count:int=1
-):
-    # check if endpoint exists
+) -> None:
+
     index_endpoints = [
         (deployed_index.index_endpoint, deployed_index.deployed_index_id)
         for deployed_index in index.deployed_indexes
@@ -130,16 +152,15 @@ def deploy_index_at_endpoint(
         vs_deployed_index = endpoint.deploy_index(
             index=index,
             deployed_index_id=deployed_index_id,
-            display_name=VS_INDEX_NAME,
-            machine_type="e2-standard-16",
-            min_replica_count=1,
-            max_replica_count=1,
+            display_name=display_name,
+            machine_type=machine_type,
+            min_replica_count=min_replica_count,
+            max_replica_count=max_replica_count,
         )
         logging.info(
             f"Vector Search index {index.display_name} is deployed at endpoint {endpoint.display_name}"
         )
-
-        return vs_deployed_index
+        pass
     else:
         vs_deployed_index = aiplatform.MatchingEngineIndexEndpoint(
             index_endpoint_name=index_endpoints[0][0]
@@ -147,6 +168,64 @@ def deploy_index_at_endpoint(
         logging.info(
             f"Vector Search index {index.display_name} is already deployed at endpoint {endpoint.display_name}"
         )
+        pass
 
-        return vs_deployed_index
+def setup_vector_store(
+    project_id:str, 
+    region:str, 
+    index:aiplatform.MatchingEngineIndex, 
+    endpoint:aiplatform.MatchingEngineIndexEndpoint, 
+    gcs_bucket_name:str
+) -> VertexAIVectorStore:
+    # setup storage
+    vector_store = VertexAIVectorStore(
+        project_id=project_id,
+        region=region,
+        index_id=index.resource_name,
+        endpoint_id=endpoint.resource_name,
+        gcs_bucket_name=gcs_bucket_name,
+    )
+
+    return vector_store
+
+def set_storage_context(
+    vector_store:VertexAIVectorStore
+) -> StorageContext:
+    # set storage context
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+    return storage_context
+
+def set_embed_model(
+    project_id:str, 
+    region:str, 
+    model_name:str="textembedding-gecko@003"
+) -> VertexTextEmbedding:
+    # configure embedding model
+    embed_model = VertexTextEmbedding(
+        model_name=model_name,
+        project=project_id,
+        location=region,
+    )
+
+    # setup the index/query process, ie the embedding model (and completion if used)
+    Settings.embed_model = embed_model
+
+    return embed_model
+
+def add_nodes_to_vector_store(
+    vector_store:VertexAIVectorStore, 
+    text_list:List[str], 
+    embed_model:VertexTextEmbedding
+) -> None:
+    nodes = [
+        TextNode(text=text, embedding=embed_model.get_text_embedding(text))
+        for text in text_list
+    ]
+
+    vector_store.add_nodes(nodes)
+
+
+
+
 
