@@ -225,7 +225,15 @@ def add_nodes_to_vector_store(
 
     vector_store.add_nodes(nodes)
 
+def create_retriever(
+    vector_store:VertexAIVectorStore, 
+    embed_model:VertexTextEmbedding
+):
+    index = VectorStoreIndex.from_vector_store(
+    vector_store=vector_store, embed_model=embed_model
+    )
+    retriever = index.as_retriever()
 
-
+    return retriever
 
 
